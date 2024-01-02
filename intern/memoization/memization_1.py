@@ -1,21 +1,23 @@
-from typing import Callable
 import json
-from functools import lru_cache
+from typing import Callable, Any
 
 
 def memoize(func: Callable) -> Callable:
-    """Memoize function"""
+    """Optimized memoize function"""
     cache = {}
+    json_dumps = json.dumps
 
-    def wrapper(*args, **kwargs):
-        # Convert dictionaries to hashable tuples
-        args_hashable = tuple(args)
-        kwargs_hashable = tuple(sorted(kwargs.items()))
-        key = (args_hashable, kwargs_hashable)
+    def wrapper(*args, **kwargs) -> Any:
+        key = json_dumps((args, kwargs), sort_keys=True)
 
-        if key not in cache:
-            cache[key] = func(*args, **kwargs)
+        result = cache.get(key)
+        if result is not None:
+            return result
 
-        return cache[key]
+        result = func(*args, **kwargs)
+        cache[key] = result
+
+        return result
 
     return wrapper
+
