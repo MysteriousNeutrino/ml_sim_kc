@@ -1,23 +1,15 @@
-import json
-from typing import Callable, Any
+from typing import Any
+from typing import Callable
 
 
 def memoize(func: Callable) -> Callable:
-    """Optimized memoize function"""
+    """Memoize function"""
     cache = {}
-    json_dumps = json.dumps
 
-    def wrapper(*args, **kwargs) -> Any:
-        key = json_dumps((args, kwargs), sort_keys=True)
+    def memoized(*args, **kwargs) -> Any:
+        key = str(args) + str(kwargs)
+        if key not in cache:
+            cache[key] = func(*args, **kwargs)
+        return cache[key]
 
-        result = cache.get(key)
-        if result is not None:
-            return result
-
-        result = func(*args, **kwargs)
-        cache[key] = result
-
-        return result
-
-    return wrapper
-
+    return memoized
