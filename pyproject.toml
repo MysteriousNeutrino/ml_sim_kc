@@ -23,6 +23,7 @@ polars = "^0.20.2"
 tqdm = "^4.66.1"
 statsmodels = "^0.14.1"
 pylint = "^3.0.3"
+pytest = "^7.4.4"
 
 
 [build-system]
