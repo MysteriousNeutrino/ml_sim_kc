@@ -1,25 +1,24 @@
+"""
+общий алгоритм
+1. Отсортировать оценки(score) в порядке убывания
+1.2 Отобрать по их индексам labels (k штук) -- top_k_labels
+    - будут выступать в качестве наших предсказаний
+1.3 Отобрать labels которые не попали в п1.2 -- non_top_k_labels
+    - будут выступать в качестве того что не попало в наши предсказания
+2. Взять метки(labels) для элементов из п.1.2 и п.1.3
+3. Рассчитать нужные метрики из confusion matrix
+    TP -- количеcтво 1 в top_k_labels
+    TN -- количеcтво 0 в non_top_k_labels
+    FP -- количеcтво 0 в top_k_labels
+    FN -- количеcтво 1 в non_top_k_labels
+    P  -- всего 1 в исходном массиве (labels)
+    N  -- всего 0 в исходном массиве (labels)
+4. Рассчитать нужные метрики performance metrics
+"""
 from typing import List
 import pandas as pd
 import numpy as np
 import sklearn
-
-
-def sort_scores(scores: List[float]):
-    """
-    sort
-    :param scores:
-    :return:
-    """
-    return sorted(scores)
-
-
-# def confusion_matrix(labels: List[int], scores: List[float], k) -> tuple:
-#     df = pd.DataFrame({'True': labels, 'Predicted': sort_scores(scores)}).iloc[:k]
-#
-#     TN, FP, FN, TP = np.array(df.groupby(["True", "Predicted"])
-#                               .value_counts().reset_index()["count"])
-#
-#     return TN, FP, FN, TP
 
 
 def recall_at_k(labels: List[int], scores: List[float], k=5) -> float:
@@ -30,22 +29,18 @@ def recall_at_k(labels: List[int], scores: List[float], k=5) -> float:
     :param k:
     :return:
     """
-    TP = 0
-    FN = 0
+    # Сортируем оценки в порядке убывания и выбираем топ-k
+    top_k_indices = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:k]
 
-    # Проходим по элементам исходных данных
-    for true_label, score in zip(labels[:k], scores[:k]):
-        # Если метка истинно положительная (True Positive)
-        if true_label == 1:
-            # Если оценка выше порогового значения 0.5
-            if score >= 0.5:
-                TP += 1
-            # Если оценка ниже порогового значения
-            else:
-                FN += 1
+    # Выбираем метки для топ-k оценок
+    top_k_labels = [labels[i] for i in top_k_indices]
 
-    # Расчет полноты (recall)
-    recall = TP / (TP + FN) if (TP + FN) != 0 else 0.0
+    # Рассчитываем recall@k
+    true_positives = sum(top_k_labels)
+    total_positives = sum(labels)
+
+    recall = true_positives / total_positives if total_positives > 0 else 0
+
     return recall
 
 
@@ -57,14 +52,15 @@ def precision_at_k(labels: List[int], scores: List[float], k=5) -> float:
     :param k:
     :return:
     """
-    df = pd.DataFrame({'True': labels, 'Predicted': sorted(scores)}).iloc[:k]
+    top_k_indices = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:k]
 
-    tp = df[(df['True'] == 1) & (df['Predicted'] == 1)].shape[0]
-    fp = df[(df['True'] == 0) & (df['Predicted'] == 1)].shape[0]
-    try:
-        precision = tp / (tp + fp)
-    except ZeroDivisionError:
-        return 0.0
+    # Выбираем метки для топ-k оценок
+    top_k_labels = [labels[i] for i in top_k_indices]
+
+    # Рассчитываем precision@k
+    true_positives = sum(top_k_labels)
+    total_positives = sum(labels)
+    precision = true_positives / k if k > 0 else 0
     return precision
 
 
@@ -76,14 +72,16 @@ def specificity_at_k(labels: List[int], scores: List[float], k=5) -> float:
     :param k:
     :return:
     """
-    df = pd.DataFrame({'True': labels, 'Predicted': sorted(scores)}).iloc[:k]
+    top_k_indices = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:k]
 
-    tn = df[(df['True'] == 0) & (df['Predicted'] == 0)].shape[0]
-    fp = df[(df['True'] == 0) & (df['Predicted'] == 1)].shape[0]
-    try:
-        specificity = tn / (tn + fp)
-    except ZeroDivisionError:
-        return 0.0
+    # Выбираем метки для топ-k оценок
+    top_k_labels = [labels[i] for i in top_k_indices]
+    non_top_k_labels = [labels[i] for i in range(len(labels)) if i not in top_k_indices]
+    # кол-во нулей не вошедших k самых вероятных предсказаний для 1
+    true_negatives = len(non_top_k_labels) - sum(non_top_k_labels)
+    # кол-во нулей среди предсказаний (для 1)
+    false_positive = len(top_k_labels) - np.sum(top_k_labels)
+    specificity = true_negatives / (false_positive + true_negatives) if (false_positive + true_negatives) > 0 else 0
     return specificity
 
 
@@ -95,15 +93,15 @@ def f1_at_k(labels: List[int], scores: List[float], k=5) -> float:
     :param k:
     :return:
     """
-    df = pd.DataFrame({'True': labels, 'Predicted': sorted(scores)}).iloc[:k]
+    top_k_indices = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:k]
 
-    tp = df[(df['True'] == 1) & (df['Predicted'] == 1)].shape[0]
-    fp = df[(df['True'] == 0) & (df['Predicted'] == 1)].shape[0]
-    fn = df[(df['True'] == 1) & (df['Predicted'] == 0)].shape[0]
-    try:
-        precision = tp / (tp + fp)
-        recall = tp / (tp + fn)
-        f1 = 2 * precision * recall / (precision + recall)
-    except ZeroDivisionError:
-        return 0.0
+    # Выбираем метки для топ-k оценок
+    top_k_labels = [labels[i] for i in top_k_indices]
+
+    # Рассчитываем precision@k
+    true_positives = sum(top_k_labels)
+    total_positives = sum(labels)
+    recall = true_positives / total_positives if total_positives > 0 else 0
+    precision = true_positives / k if k > 0 else 0
+    f1 = 2 * (recall * precision) / (precision + recall) if (precision + recall) > 0 else 0
     return f1
