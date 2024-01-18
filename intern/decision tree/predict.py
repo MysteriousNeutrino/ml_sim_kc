@@ -141,44 +141,29 @@ class DecisionTreeRegressor:
         y : array of shape (n_samples,)
             The predicted values.
         """
-        result = []
-        for predict in X:
-            result.append(self._predict_one_sample(predict))
-
-        return np.array(result)
+        return np.array([self._predict_one_sample(features) for features in X])
 
     def _predict_one_sample(self, features: np.ndarray) -> int:
         """Predict the target value of a single sample."""
-        request_leafs = []
-        for i in range(3):
-            path = "self.tree_." + "".join(request_leafs)
-            # print("path: ",path)
-            # print("threshold: ", eval(path + 'threshold'))
-            # print("feature: ", eval(path + 'feature'))
-            # print(eval(path + 'feature'))
-            if eval(path + 'threshold') is not None and eval(path + 'feature') is not None:
-                if features[eval(path + 'feature')] > eval(path + 'threshold'):
-                    request_leafs.append('right.')
-                else:
-                    request_leafs.append('left.')
-            # print("self.tree_." + "".join(request_leafs) + "value")
+        node = self.tree_
+        while node.left:
+            if features[node.feature] < node.threshold:
+                node = node.left
+            else:
+                node = node.right
+        return node.value
 
+df = pd.read_csv(
+    r"C:\Users\Neesty\PycharmProjects\ml_sim_kc"
+    r"\intern\decision tree\load-delay_days_decision_tree_1000.csv")
+df = df[:10]
+X = df.drop(columns=['delay_days']).values
+y = df['delay_days'].values
 
-        result = "self.tree_." + "".join(request_leafs) + "value"
-        # print("result: ", eval(result))
-        return eval(result)
+decisionTreeRegressor = DecisionTreeRegressor(max_depth=10)
 
-# df = pd.read_csv(
-#     r"C:\Users\Neesty\PycharmProjects\ml_sim_kc"
-#     r"\intern\decision tree\load-delay_days_decision_tree_1000.csv")
-# df = df[:10]
-# X = df.drop(columns=['delay_days']).values
-# y = df['delay_days'].values
-#
-# decisionTreeRegressor = DecisionTreeRegressor(max_depth=10)
-#
-# model = decisionTreeRegressor.fit(X, y)
-# # print(X)
-# print(f'{model.tree_}')
-# print(model.predict(np.array([[9, 61, 41396, 5, 0, 0, 636, 6, 0, 483916, 120],[7, 55, 44396, 8, 0, 0, 200, 6, 0, 483916, 120]])))
-# # print((model.as_json()))
+model = decisionTreeRegressor.fit(X, y)
+# print(X)
+print(f'{model.tree_}')
+print(model.predict(np.array([[9, 61, 41396, 5, 0, 0, 636, 6, 0, 483916, 120],[7, 55, 44396, 8, 0, 0, 200, 6, 0, 483916, 120]])))
+# print((model.as_json()))
