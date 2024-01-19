@@ -14,17 +14,16 @@ class GradientBoostingRegressor:
             max_depth=3,
             min_samples_split=2,
             loss=None,
-            verbose=False, ):
+            verbose=False,):
         self.n_estimators = n_estimators
         self.learning_rate = learning_rate
         self.max_depth = max_depth
         self.min_samples_split = min_samples_split
         self.loss = loss
         self.verbose = verbose
-
-    base_pred_: float = None
-    trees_: list = []
-    loss_function: Callable = None
+        self.base_pred_: float = None
+        self.trees_: list = []
+        self.loss_function: Callable = None
 
     def _mse(self, y_true, y_pred):
         loss = float(np.mean((y_pred - y_true) ** 2))
@@ -46,7 +45,7 @@ class GradientBoostingRegressor:
         # match self.loss:
         #     case None:
         #         self.loss_function = self._mse
-        #     case "mse" | "mae":  # "mse" | "mae" для нескольких вариантов
+        #     case "mse":
         #         self.loss_function = self._mse
         #     case function if callable(function):
         #         self.loss_function = function
@@ -71,11 +70,12 @@ class GradientBoostingRegressor:
             tree = DecisionTreeRegressor(
                 max_depth=self.max_depth,
                 min_samples_split=self.min_samples_split)
-
+            # print(X.shape)
             tree.fit(X, -y_grad)
             # 4
             y_pred = y_pred + tree.predict(X) * self.learning_rate
             # 5
+            # print(len(y_pred))
             self.trees_.append(tree)
         return self
 
@@ -100,13 +100,16 @@ class GradientBoostingRegressor:
 df = pd.read_csv(
     r"C:\Users\Neesty\PycharmProjects\ml_sim_kc"
     r"\intern\decision tree\load-delay_days_decision_tree_1000.csv")
-df = df[:10]
 X = df.drop(columns=['delay_days']).values
 y = df['delay_days'].values
 
 
-model = GradientBoostingRegressor(max_depth=2)
 
-model.fit(X, y)
+model = GradientBoostingRegressor(max_depth=5, n_estimators=100, min_samples_split=5)
 
-model.predict(X)
+model = model.fit(X[:500], y[:500])
+
+print(model.predict(X[500:510]))
+print(model.n_estimators)
+print(len(model.trees_))
+print(y[500:510])
