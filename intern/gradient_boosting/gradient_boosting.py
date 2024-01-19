@@ -27,8 +27,9 @@ class GradientBoostingRegressor:
     loss_function: Callable = None
 
     def _mse(self, y_true, y_pred):
-        loss = (np.mean((y_pred - y_true) ** 2))
-        return loss
+        loss = float(np.mean((y_pred - y_true) ** 2))
+        grad = y_pred - y_true
+        return loss, grad
 
     def fit(self, X, y):
         """
@@ -42,22 +43,29 @@ class GradientBoostingRegressor:
             GradientBoostingRegressor: The fitted model.
         """
 
-        match self.loss:
-            case None:
-                self.loss_function = self._mse
-            case "mse" | "mae":  # "mse" | "mae" для нескольких вариантов
-                self.loss_function = self._mse
-            case function if callable(function):
-                self.loss_function = function
-            case _:
-                raise AttributeError("unknown loos function")
+        # match self.loss:
+        #     case None:
+        #         self.loss_function = self._mse
+        #     case "mse" | "mae":  # "mse" | "mae" для нескольких вариантов
+        #         self.loss_function = self._mse
+        #     case function if callable(function):
+        #         self.loss_function = function
+        #     case _:
+        #         raise AttributeError("unknown loos function")
+
+        if self.loss is None:
+            self.loss_function = self._mse
+        elif self.loss in ["mse"]:
+            self.loss_function = self._mse
+        elif callable(self.loss):
+            self.loss_function = self.loss
 
         # 1
         self.base_pred_ = float(np.mean(y))
         y_pred = self.base_pred_  # np.full((y.size, 1), self.base_pred_)
         for i in range(self.n_estimators):
             # 2
-            y_grad = y_pred - y  # approx_fprime(y_pred, lambda pred: self.loss_function(y, pred), epsilon=1e-6)
+            y_grad = self.loss_function(y, y_pred)[1]  # approx_fprime(y_pred, lambda pred: self.loss_function(y, pred), epsilon=1e-6)
             # print(y_grad)
             # 3
             tree = DecisionTreeRegressor(
@@ -88,22 +96,17 @@ class GradientBoostingRegressor:
 
         return predictions
 
-#
-# df = pd.read_csv(
-#     r"C:\Users\Neesty\PycharmProjects\ml_sim_kc"
-#     r"\intern\decision tree\load-delay_days_decision_tree_1000.csv")
-# df = df[:10]
-# X = df.drop(columns=['delay_days']).values
-# y = df['delay_days'].values
-#
-#
-# def my_loss():
-#     print("my_loss")
-#     return 0
-#
-#
-# model = GradientBoostingRegressor(max_depth=2)
-#
-# model.fit(X, y)
-#
-# model.predict(X)
+
+df = pd.read_csv(
+    r"C:\Users\Neesty\PycharmProjects\ml_sim_kc"
+    r"\intern\decision tree\load-delay_days_decision_tree_1000.csv")
+df = df[:10]
+X = df.drop(columns=['delay_days']).values
+y = df['delay_days'].values
+
+
+model = GradientBoostingRegressor(max_depth=2)
+
+model.fit(X, y)
+
+model.predict(X)
