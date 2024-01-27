@@ -2363,6 +2363,17 @@ spelling = ["pyenchant (>=3.2,<4.0)"]
 testutils = ["gitpython (>3)"]
 
 [[package]]
+name = "pyment"
+version = "0.3.3"
+description = "Generate/convert automatically the docstrings from code signature"
+optional = false
+python-versions = "*"
+files = [
+    {file = "Pyment-0.3.3-py2.py3-none-any.whl", hash = "sha256:a0c6ec59d06d24aeec3eaecb22115d0dc95d09e14209b2df838381fdf47a78cc"},
+    {file = "Pyment-0.3.3.tar.gz", hash = "sha256:951a4c52d6791ccec55bc739811169eed69917d3874f5fe722866623a697f39d"},
+]
+
+[[package]]
 name = "pyparsing"
 version = "3.1.1"
 description = "pyparsing module - Classes and methods to define and execute parsing grammars"
@@ -3491,4 +3502,4 @@ scikit-learn = ["scikit-learn"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "71fbd9fc3c27ce2beb9c06e785826bf2f4d11a5f5cd7f142cae574db09dbb055"
+content-hash = "ace3e46cdfeac1e47fc611e735a232777e134026aec03e9ac5cd1355609340fc"
