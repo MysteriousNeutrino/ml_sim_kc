@@ -2,7 +2,7 @@ SELECT
   sku,
   dates,
   avg(price) as price,
-  count(dates) as qnt
+  count(dates) as qty
 FROM
   transactions
 GROUP BY
