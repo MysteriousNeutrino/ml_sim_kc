@@ -29,6 +29,7 @@ networkx = "^3.2.1"
 opencv-python = "^4.9.0.80"
 scikit-image = "^0.22.0"
 pyment = "^0.3.3"
+uvicorn = "^0.27.0.post1"
 
 
 [build-system]
