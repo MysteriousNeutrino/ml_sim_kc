@@ -12,8 +12,8 @@ app = FastAPI()
 click_count: int = 0
 # offer_id: list[click_id:int]
 offer_clicks = {}
-# offer_id: list[reward:int]
-offer_reward = {}
+# click_id:int : reward:int
+click_reward = {}
 
 
 @app.put("/feedback/")
@@ -21,20 +21,19 @@ def feedback(click_id: int, reward: float) -> dict:
     """Get feedback for particular click"""
     # Response body consists of click ID
     # and accepted click status (True/False)
+    if click_id not in click_reward:
+        try:
+            offer_id = [offer_id for offer_id, click_ids in offer_clicks.items() if click_id in click_ids][0]
+            offer_id = int(offer_id)
 
-    try:
-        offer_id = [offer_id for offer_id, click_ids in offer_clicks.items() if click_id in click_ids][0]
-        offer_id = int(offer_id)
+            is_conversion = reward != 0
+            click_reward[click_id] = reward
 
-        is_conversion = reward != 0
-        if offer_id not in offer_reward:
-            offer_reward[offer_id] = []
-        offer_reward[offer_id].append(reward)
-
-    except IndexError:
-        # В случае, если offer_id пустой (нет совпадений)
-        raise HTTPException(status_code=404, detail="Offer not found")
-
+        except IndexError as e:
+            # В случае, если offer_id пустой (нет совпадений)
+            raise HTTPException(status_code=404, detail=f"Offer not found, {e.__traceback__}") from e
+    else:
+        raise HTTPException(status_code=404, detail="This click already has a record of reward")
 
     response = {
         "click_id": click_id,
@@ -49,6 +48,7 @@ def feedback(click_id: int, reward: float) -> dict:
 def stats(offer_id: int) -> dict:
     """Return offer's statistics"""
     if offer_id not in offer_clicks:
+        print("-------------- offer_id is none")
         response = {
             "offer_id": offer_id,
             "clicks": None,
@@ -59,22 +59,19 @@ def stats(offer_id: int) -> dict:
         }
     else:
         print(offer_clicks[offer_id])
-        clicks = len(offer_clicks[offer_id])
-        if offer_id in offer_reward:
-            conversions = len(
-                offer_reward[offer_id]) - offer_reward[offer_id].count(0)
-            reward = sum(offer_reward[offer_id])
-        else:
-            conversions = None
-            reward = None
-        print(offer_reward)
+        clicks = offer_clicks[offer_id]
+        rewarding_clicks = [click_reward[click_id] for click_id in clicks if click_id in click_reward]
+        conversions = len(clicks) - rewarding_clicks.count(0)
+        reward = sum(rewarding_clicks)
+
+        print(click_reward)
         response = {
             "offer_id": offer_id,
-            "clicks": clicks,
+            "clicks": len(clicks),
             "conversions": conversions,
             "reward": reward,
-            "cr": conversions / clicks if conversions is not None else None,
-            "rpc": reward / clicks if reward is not None else None,
+            "cr": conversions / len(clicks) if conversions is not None else None,
+            "rpc": reward / len(clicks) if reward is not None else None,
         }
 
     return response
@@ -87,7 +84,7 @@ def sample(click_id: int, offer_ids: str) -> dict:
     offers_ids = [int(offer) for offer in offer_ids.split(",")]
 
     # Sample top offer ID
-    if click_id <= 100:
+    if click_count <= 100:
         offer_id = int(np.random.choice(offers_ids))
     else:
         # реализовать алгоритм максимизации RPC
@@ -113,13 +110,20 @@ def add_click_to_offer(click_id, offer_id):
     # добавить обработку исключения, если отдаётся уже записанный click
     global click_count
     global offer_clicks
+    if check_number_in_values(offer_clicks, click_id):
+        raise HTTPException(status_code=404, detail="This click_id is already registered")
     if offer_id not in offer_clicks:
         offer_clicks[offer_id] = []
     offer_clicks[offer_id].append(click_id)
     click_count += 1
     print(offer_clicks)
-    print(offer_reward)
+    print(click_reward)
 
+def check_number_in_values(dictionary, number):
+    for _, value in dictionary.items():
+        if number in value:
+            return True
+    return False
 
 def main() -> None:
     """Run application"""
