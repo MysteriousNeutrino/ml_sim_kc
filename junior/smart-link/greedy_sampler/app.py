@@ -25,8 +25,13 @@ click_reward = {}
 # offer_id : sum(reward)
 offer_total_reward = {}
 
+
 @app.on_event("startup")
 async def startup_event():
+    """
+    startup_event
+    :return:
+    """
     global click_count, offer_clicks, click_reward, offer_total_reward
 
     click_count = 0
@@ -56,7 +61,6 @@ def feedback(click_id: int, reward: float) -> dict:
             offer_total_reward[offer_id] += reward
             # print("offer_total_reward: ", offer_total_reward)
         except IndexError as e:
-            # В случае, если offer_id пустой (нет совпадений)
             raise HTTPException(status_code=404, detail="Offer not found") from e
     else:
         raise HTTPException(status_code=404, detail="This click already has a record of reward")
@@ -88,9 +92,9 @@ def stats(offer_id: int) -> dict:
                             if click_id in click_reward]
         conversions = len(rewarding_clicks) - rewarding_clicks.count(0)
         reward = sum(rewarding_clicks)
-        print("rewarding_clicks: ", rewarding_clicks)
-        print("click_reward: ", click_reward)
-        print("click_count: ", click_count)
+        # print("rewarding_clicks: ", rewarding_clicks)
+        # print("click_reward: ", click_reward)
+        # print("click_count: ", click_count)
         response = {
             "offer_id": offer_id,
             "clicks": len(clicks),
@@ -117,19 +121,20 @@ def sample(click_id: int, offer_ids: str) -> dict:
         # реализовать алгоритм максимизации RPC
         # брать прост offer с самым большим RPC в 90% случаев
         sampler = "greedy"
-        if random.randint(0, 1) > 0.9:
-            common_keys = set(offer_ids) & set(offer_total_reward.keys())
-            offer_id = offer_ids[0]
-            max_value = offer_total_reward[offer_id] \
-                if offer_id in offer_total_reward else float('-inf')
-            for key in common_keys:
-                if key in offer_total_reward and offer_total_reward[key] > max_value:
-                    max_value = offer_total_reward[key]
-                    offer_id = key
 
+        max_rpc = 0
+        best_offer_id = offer_ids[0]
+        for offer_id in offer_ids:
+            if offer_id in offer_total_reward and offer_id in offer_clicks:
+                rpc = offer_total_reward[offer_id] / len(offer_clicks[offer_id])
+                if rpc > max_rpc:
+                    max_rpc = rpc
+                    best_offer_id = offer_id
+        if best_offer_id is not None:
+            offer_id = best_offer_id
         else:
-            offer_id = int(np.random.choice(offer_ids))
-    # print("offer_ids: ", offer_ids)
+            offer_id = offer_ids[0]
+
     add_click_to_offer(click_id, offer_id)
 
     response = {
@@ -156,8 +161,8 @@ def add_click_to_offer(click_id, offer_id):
         offer_clicks[offer_id] = []
     offer_clicks[offer_id].append(click_id)
     click_count += 1
-    print(offer_clicks)
-    print(click_reward)
+    # print(offer_clicks)
+    # print(click_reward)
 
 
 def check_number_in_values(dictionary, number):
