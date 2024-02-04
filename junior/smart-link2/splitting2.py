@@ -47,12 +47,10 @@ class Experiment2:
         """
 
         weights = [int(weight * 100) for weight in self.group_weights]
-        print(weights)
 
         hash_input = str(click_id) + self.salt
         hashed = int(hashlib.sha256(hash_input.encode("utf-8")).hexdigest(), 16)
         modulo = hashed % sum(weights)
-        print(modulo)
 
         group = 0
         weight_cumsum = 0
@@ -64,19 +62,19 @@ class Experiment2:
 
         return group, self.groups[group]
 
-
-ex1 = Experiment2(experiment_id=1, groups=("A", "B"), group_weights=None)
-ex2 = Experiment2(experiment_id=1, groups=("A", "B"), group_weights=None)
-ex3 = Experiment2(experiment_id=2, groups=("A", "B"), group_weights=[0.1, 0.9])
-ex4 = Experiment2(experiment_id=3, groups=("AAA", "BBB", "CCC"), group_weights=[0.1, 0.1, 0.8])
-# ex5 = Experiment(experiment_id=, groups=, group_weights=)
-# ex6 = Experiment(experiment_id=, groups=, group_weights=)
-
-
-print(ex1.group(1))
-print(ex2.group(1))
-print(ex3.group(1))
-print(ex4.group(1))
-
-group_numbers = []
+#
+# ex1 = Experiment2(experiment_id=1, groups=("A", "B"), group_weights=None)
+# ex2 = Experiment2(experiment_id=1, groups=("A", "B"), group_weights=None)
+# ex3 = Experiment2(experiment_id=2, groups=("A", "B"), group_weights=[0.1, 0.9])
+# ex4 = Experiment2(experiment_id=3, groups=("AAA", "BBB", "CCC"), group_weights=[0.1, 0.1, 0.8])
+# # ex5 = Experiment(experiment_id=, groups=, group_weights=)
+# # ex6 = Experiment(experiment_id=, groups=, group_weights=)
+#
+#
+# print(ex1.group(1))
+# print(ex2.group(1))
+# print(ex3.group(1))
+# print(ex4.group(1))
+#
+# group_numbers = []
 

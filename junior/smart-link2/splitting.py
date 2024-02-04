@@ -85,19 +85,3 @@ class Experiment:
 #
 # # Отображаем график
 # plt.show()
-
-
-ex1 = Experiment(experiment_id=1, groups=("A", "B"), group_weights=None)
-ex2 = Experiment(experiment_id=1, groups=("A", "B"), group_weights=None)
-ex3 = Experiment(experiment_id=2, groups=("A", "B"), group_weights=[0.1, 0.9])
-ex4 = Experiment(experiment_id=3, groups=("AAA", "BBB", "CCC"), group_weights=[0.1, 0.1, 0.8])
-# ex5 = Experiment(experiment_id=, groups=, group_weights=)
-# ex6 = Experiment(experiment_id=, groups=, group_weights=)
-
-
-print(ex1.group(1))
-print(ex2.group(1))
-print(ex3.group(1))
-print(ex4.group(1))
-
-group_numbers = []
