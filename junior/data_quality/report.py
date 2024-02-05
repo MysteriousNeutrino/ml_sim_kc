@@ -23,7 +23,7 @@ class Report:
         """Calculate DQ metrics and build report."""
         self.report_ = {}
         report = self.report_
-        report['title'] = ["table_name", "metric", "limits", "values", "status", "error"]
+        report['title'] = f"DQ Report for tables {sorted(list(set(tables.keys())))}"
         report['result'] = {}
         report['passed'] = 0
         report['failed'] = 0
@@ -33,46 +33,38 @@ class Report:
         if self.engine != "pandas":
             raise NotImplementedError("Only pandas API currently supported!")
         for i, checklist in enumerate(self.checklist):
-            # print(checklist[0])
-            # print(checklist[1])
-            # print(checklist[2])
             try:
                 table = tables[checklist[0]]
-                # print("table: ", table)
                 metric_obj = checklist[1]
-                # print("metric_obj: ", metric_obj)
                 limits = checklist[2]
-                # print("limits: ", limits, list(limits.keys()))
+                value_metric_obj = metric_obj(table)
                 if list(limits.keys()) == []:
-                    # print("limits.keys() is None")
-                    value = metric_obj(table)
+                    value = value_metric_obj
                     status = '.'
                 else:
-                    value_equal = metric_obj(table).get(list(limits.keys())[0])
-                    value = metric_obj(table)
-                    # print("value: ", value_equal, list(limits.values())[0][0], list(limits.values())[0][1])
+                    value_equal = value_metric_obj.get(list(limits.keys())[0])
+                    value = value_metric_obj
                     status = '.' if list(limits.values())[0][0] <= value_equal <= list(limits.values())[0][1] else 'F'
                 if status == '.':
                     report['passed'] += 1
                 elif status == 'F':
                     report['failed'] += 1
-                # print("status: ", status)
                 error = ''
-                # print("error: ", error)
             except Exception as e:
+                error = e
                 report['errors'] += 1
                 status = 'E'
-                error = str(e)
 
-            report_line = [checklist[0], metric_obj, limits, value, status, error]
-            # print("report_line: ", report_line)
+            report_line = [checklist[0], str(metric_obj), str(limits), value, status, error]
 
             report['result'][i] = report_line
+        report['passed_pct'] = report['passed'] / report['total'] * 100
+        report['failed_pct'] = report['failed'] / report['total'] * 100
+        report['errors_pct'] = report['errors'] / report['total'] * 100
 
+        report['result'] = pd.DataFrame.from_dict(report['result'], orient='index',
+                                           columns=['table_name', 'metric', 'limits', 'values', 'status', 'error'])
 
-        report['passed_pct'] = report['passed'] / report['total']
-        report['failed_pct'] = report['failed'] / report['total']
-        report['errors_pct'] = report['errors'] / report['total']
 
         return report
 
@@ -103,9 +95,13 @@ class Report:
         )
 
 
+#
 # report = Report(CHECKLIST, "pandas")
 # daily_sales_df = pd.read_csv(
 #     r"C:\Users\Neesty\PycharmProjects\ml_sim_kc\junior\data_quality\ke_daily_sales.csv"
 # )
-# report.fit({'sales': daily_sales_df})
+# ke_visits_df = pd.read_csv(
+#     r"C:\Users\Neesty\PycharmProjects\ml_sim_kc\junior\data_quality\ke_visits.csv"
+# )
+# report.fit({'sales': daily_sales_df, 'relevance': ke_visits_df})
 # print(report.to_str())
