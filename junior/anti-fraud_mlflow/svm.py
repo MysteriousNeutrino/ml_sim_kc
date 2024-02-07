@@ -6,12 +6,12 @@ import fire
 import mlflow
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import IsolationForest
 from sklearn.metrics import precision_recall_curve
 from sklearn.metrics import PrecisionRecallDisplay
 from sklearn.metrics import roc_auc_score
 from sklearn.metrics import roc_curve
 from sklearn.metrics import RocCurveDisplay
+from sklearn.svm import OneClassSVM
 
 IDENTIFIER = f'antifraud-{os.environ.get("KCHECKER_USER_USERNAME", "default")}'
 TRACKING_URI = os.environ.get("TRACKING_URI")
@@ -55,8 +55,7 @@ def recall_at_specificity(
     """
 
     fpr, tpr, _ = roc_curve(true_labels, pred_scores)
-    specificity = 1 - fpr
-    metric = tpr[specificity >= min_specificity].max()
+    metric = tpr[1 - fpr >= min_specificity].max()
     return metric
 
 
@@ -98,57 +97,47 @@ def job(
         test_path (str): Test dataset path
         target (str): Target column name
     """
-    mlflow.set_tracking_uri(TRACKING_URI)
-    mlflow.set_experiment(IDENTIFIER)
+    mlflow.set_tracking_uri(uri=TRACKING_URI)
+    mlflow.set_experiment(experiment_name=IDENTIFIER)
     mlflow.start_run()
 
     train_dataset = pd.read_csv(train_path)
     test_dataset = pd.read_csv(test_path)
 
-    FEATURES = ['f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10', 'f11',
-                'f12', 'f13', 'f14', 'f15', 'f16', 'f17', 'f18', 'f19', 'f20', 'f21',
-                'f22', 'f23', 'f24', 'f25', 'f26', 'f27', 'f28', 'f29', 'f30']
+    model = OneClassSVM()
+    model.fit(train_dataset.drop(target, axis=1))
 
-    model = IsolationForest(n_estimators=85)
-    model.fit(train_dataset.drop(f'{target}', axis=1))
+    test_targets = test_dataset[target].values
+    pred_scores = -model.score_samples(test_dataset.drop(target, axis=1))
 
-    test_targets = test_dataset[f'{target}']
-    pred_scores = -model.score_samples(test_dataset.drop(f'{target}', axis=1))
-
-    roc_auc = roc_auc_score(test_targets, pred_scores)
-    recall_precision_95 = recall_at_precision(test_targets, pred_scores)
-    recall_specificity_95 = recall_at_specificity(test_targets, pred_scores)
-
-    pr_curve, roc_curve = curves(test_targets, pred_scores)
-
-    tags = {
-        "task_type": "anti-fraud",
-        "framework": "sklearn"
-    }
-
-    params = {
-        'features': list(train_dataset.drop(f"{target}", axis=1).columns),
-        "target": train_dataset[f"{target}"].name,
-        "model_type": model.__class__.__name__
-    }
-    metrics = {
-        "roc_auc": roc_auc,
-        "recall_precision_95": recall_precision_95,
-        "recall_specificity_95": recall_specificity_95
-    }
+    tags = {"task_type": "anti-fraud", "framework": "sklearn"}
     mlflow.set_tags(tags)
 
-    mlflow.log_params(params)
+    dataset_params = {
+        "features": train_dataset.drop(target, axis=1).columns.tolist(),
+        "target": target,
+    }
+    mlflow.log_params(dataset_params)
 
+    mlflow.log_param("model_type", model.__class__.__name__)
+
+    metrics = {
+        "roc_auc": roc_auc_score(test_targets, pred_scores),
+        "recall_precision_95": recall_at_precision(test_targets, pred_scores, 0.95),
+        "recall_specificity_95": recall_at_specificity(test_targets, pred_scores, 0.95),
+    }
     mlflow.log_metrics(metrics)
 
-    mlflow.log_artifact(local_path=train_path, artifact_path="data/")
-    mlflow.log_artifact(local_path=test_path, artifact_path="data/")
+    mlflow.log_artifact(train_path, "data/")
+    mlflow.log_artifact(test_path, "data/")
 
+    pr_curve, roc_curve = curves(test_targets, pred_scores)
     mlflow.log_image(pr_curve, "metrics/pr.png")
     mlflow.log_image(roc_curve, "metrics/roc.png")
 
-    mlflow.sklearn.log_model(model, artifact_path=IDENTIFIER, registered_model_name=IDENTIFIER)
+    mlflow.sklearn.log_model(
+        model, artifact_path=IDENTIFIER, registered_model_name=IDENTIFIER
+    )
 
     mlflow.end_run()
 
