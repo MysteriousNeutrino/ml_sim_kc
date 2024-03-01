@@ -7,14 +7,6 @@ def xy_fitted_residuals(y_true, y_pred):
     residuals = y_true - y_pred
     return y_pred, residuals
 
-
-# def xy_normal_qq(y_true, y_pred):
-#     """Coordinates (x, y) for normal Q-Q plot."""
-#     residuals = y_true - y_pred
-#     residuals = (residuals - np.mean(residuals)) / np.std(residuals)
-#     x_norm, y_norm = probplot(residuals, plot=None)
-#     return np.array(x_norm), np.array(y_norm)
-
 def xy_normal_qq(y_true, y_pred):
     """Coordinates (x, y) for normal Q-Q plot."""
     residuals = y_true - y_pred
