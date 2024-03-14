@@ -1,12 +1,13 @@
 """Baseline for Kaggle AB."""
 
-from typing import Callable, Dict, List, Tuple
+from typing import Callable, Dict, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
+from scipy.stats import ttest_rel
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import r2_score
-from sklearn.model_selection import KFold, train_test_split
+from sklearn.model_selection import KFold, train_test_split, RepeatedKFold
 from tqdm import tqdm
 
 
@@ -47,7 +48,7 @@ def cross_val_score(
         model: Callable,
         X: np.ndarray,
         y: np.ndarray,
-        cv: int,
+        cv: Union[int, Tuple[int, int]],
         params_list: List[Dict],
         scoring: Callable,
         random_state: int = 42,
@@ -86,20 +87,24 @@ def cross_val_score(
         cross-validation scores [n_models x n_folds]
 
     """
-    kf = KFold(n_splits=cv, shuffle=True, random_state=random_state)
+    if isinstance(cv, int):
+        kf = KFold(n_splits=cv,shuffle=True, random_state=random_state)
+    if isinstance(cv, tuple):
+        kf = RepeatedKFold(n_splits=cv[0], n_repeats=cv[1], random_state=random_state)
     all_scores = []
-    for n, params in tqdm(enumerate(params_list)):
+    for n,params in tqdm(enumerate(params_list)):
         # fit
         model.set_params(**params)
         model_scores = []
         for train_index, test_index in kf.split(X):
+
             X_train, X_test = X[train_index], X[test_index]
             y_train, y_test = y[train_index], y[test_index]
 
             model.fit(X_train, np.log1p(y_train))
-            # predict
+        # predict
             y_pred = np.expm1(model.predict(X_test))
-            # evaluate
+        #evaluate
             score = scoring(y_test, y_pred)
             model_scores.append(score)
         all_scores.append(model_scores)
@@ -107,12 +112,13 @@ def cross_val_score(
 
 
 def compare_models(
-        cv: int,
+        cv: Union[int, Tuple[int, int]],
         model: Callable,
         params_list: List[Dict],
         X: np.ndarray,
         y: np.ndarray,
         random_state: int = 42,
+        alpha: float = 0.05,
         show_progress: bool = False,
 ) -> List[Dict]:
     """Compare models with Cross val.
@@ -156,31 +162,44 @@ def compare_models(
                                  params_list=params_list,
                                  random_state=random_state,
                                  scoring=r2_score)
-    all_scores_mean = all_scores.mean(axis=1)
+
+    all_scores_mean = []
+    if isinstance(cv, tuple):
+        for j in range(cv[0]):
+            indixes = [i for i in (range(cv[0] * cv[1])) if i % cv[0] == j]
+            all_scores_mean.append(all_scores[:, indixes].mean(axis=1))
+        all_scores_mean = np.array(all_scores_mean).T
+    if isinstance(cv, int):
+        all_scores_mean = all_scores.copy()
+
     compare_list = []
-    for i, value in enumerate(all_scores_mean[1:]):
+    for i, *(value) in enumerate(all_scores_mean[1:]):
+        mean = np.array(value).mean()
+        baseline_mean = np.array(all_scores_mean[0]).mean()
+        _, p_value = ttest_rel(all_scores_mean[0], *value)
         compare_dict = {}
         compare_dict['model_index'] = i + 1
-        compare_dict['avg_score'] = value
-        compare_dict['effect_sign'] = np.sign(value - all_scores_mean[0])
+        compare_dict['avg_score'] = mean
+        compare_dict['p_value'] = p_value
+        compare_dict['effect_sign'] = (1 if mean > baseline_mean else -1) if p_value < alpha else 0
         compare_list.append(compare_dict)
-
     return sorted(compare_list, key=lambda x: x['avg_score'], reverse=True)
+
 
 def run() -> None:
     """Run."""
 
     data_path = "train.csv.zip"
     random_state = 42
-    cv = 5
+    cv = (5,2)
     params_list = [
         {"max_depth": 10},  # baseline
         {"max_depth": 2},
         {"max_depth": 3},
-        {"max_depth": 4},
-        {"max_depth": 5},
-        {"max_depth": 9},
-        {"max_depth": 11},
+        # {"max_depth": 4},
+        # {"max_depth": 5},
+        # {"max_depth": 9},
+        # {"max_depth": 11},
         {"max_depth": 12},
         {"max_depth": 15},
     ]
