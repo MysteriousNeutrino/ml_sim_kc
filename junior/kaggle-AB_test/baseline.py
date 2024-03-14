@@ -162,21 +162,12 @@ def compare_models(
                                  params_list=params_list,
                                  random_state=random_state,
                                  scoring=r2_score)
-
-    all_scores_mean = []
-    if isinstance(cv, tuple):
-        for j in range(cv[0]):
-            indixes = [i for i in (range(cv[0] * cv[1])) if i % cv[0] == j]
-            all_scores_mean.append(all_scores[:, indixes].mean(axis=1))
-        all_scores_mean = np.array(all_scores_mean).T
-    if isinstance(cv, int):
-        all_scores_mean = all_scores.copy()
-
+    print(all_scores)
     compare_list = []
-    for i, *(value) in enumerate(all_scores_mean[1:]):
+    for i, *(value) in enumerate(all_scores[1:]):
         mean = np.array(value).mean()
-        baseline_mean = np.array(all_scores_mean[0]).mean()
-        _, p_value = ttest_rel(all_scores_mean[0], *value)
+        baseline_mean = np.array(all_scores[0]).mean()
+        _, p_value = ttest_rel(all_scores[0], *value)
         compare_dict = {}
         compare_dict['model_index'] = i + 1
         compare_dict['avg_score'] = mean
